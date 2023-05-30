@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/apache/qpid-proton/go/pkg/amqp"
 	"github.com/apache/qpid-proton/go/pkg/electron"
@@ -22,7 +23,7 @@ URLs are of the form "amqp://<host>:<port>/<amqp-address>"
 }
 
 var count = flag.Int("count", 10, "Stop after receiving this many messages in total")
-var prefetch = flag.Int("prefetch", 0, "enable a pre-fetch window for flow control")
+var prefetch = flag.Int("prefetch", 2, "enable a pre-fetch window for flow control")
 var debug = flag.Bool("debug", false, "Print detailed debug output")
 var debugf = func(format string, data ...interface{}) {} // Default no debugging output
 
@@ -87,11 +88,17 @@ func main() {
 	fmt.Printf("Listening on %d connections\n", len(urls))
 
 	// print each message until the count is exceeded.
-	for i := 0; i < *count; i++ {
-		m := <-messages
-		log.Printf("%v\n", m.Body())
+	/*
+		for i := 0; i < *count; i++ {
+			m := <-messages
+			log.Printf("%v\n", m.Body())
+		}
+		fmt.Printf("Received %d messages\n", *count)
+	*/
+
+	for msg := range messages {
+		go ProcessMessage(msg)
 	}
-	fmt.Printf("Received %d messages\n", *count)
 
 	// Close all connections, this will interrupt goroutines blocked in Receiver.Receive()
 	// with electron.Closed.
@@ -101,6 +108,12 @@ func main() {
 		c.Close(nil)
 	}
 	wait.Wait() // Wait for all goroutines to finish.
+}
+
+func ProcessMessage(msg amqp.Message) {
+	fmt.Printf("Precessando mensagem: %s\n", msg.Body())
+	time.Sleep(8 * time.Second)
+	fmt.Printf("Processamento finalizado: %s\n", msg.Body())
 }
 
 func fatalIf(err error) {
